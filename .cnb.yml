@@ -1,0 +1,12 @@
+$:
+  vscode:
+    - services:
+        - vscode
+        - docker
+      runner:
+        cpus: 16
+      docker:
+        image: docker.cnb.cool/arsrna/dev-image/nodejs
+      stages:
+        - name: 安装依赖
+          script: bun i
