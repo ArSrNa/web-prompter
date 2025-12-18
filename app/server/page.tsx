@@ -5,6 +5,8 @@ import { QRCodeSVG } from "qrcode.react";
 
 import { io, Socket } from "socket.io-client";
 import { uuid } from "@/utils/uuid";
+import { newConnection } from "@/lib/socket";
+import { Button } from "@/components/ui/button";
 
 
 export default function Server() {
@@ -22,13 +24,12 @@ export default function Server() {
 
   useEffect(() => {
     if (!roomId) return;
-    socket.current = io({
-      query: {
-        roomId
-      },
-      autoConnect: true,
-      transports: ['websocket'],
-    })
+    socket.current = newConnection(roomId);
+
+    // 有用户加入房间
+    socket.current.on('user_join', (data) => {
+      console.log('系统提示', data.message, 'system');
+    });
 
     if (socket.current.connected) {
       onConnect();
@@ -41,8 +42,8 @@ export default function Server() {
       // socket.io.engine.on("upgrade", (transport) => {
       //   setTransport(transport.name);
       // });
-      socket.current.on('changeValue', (data) => {
-        console.log(data)
+      socket.current.on('receive_group_msg', (data) => {
+        console.log('receive_group_msg', data)
       })
     }
 
@@ -64,14 +65,14 @@ export default function Server() {
 
   return (
     <div>
-      <label>ID：{roomId}</label><input />
+      <label>ID：{roomId}</label>
       <div className="bg-white p-2">
         <QRCodeSVG value={roomId} />
       </div>
 
-      <button onClick={() => {
-        socket.current?.emit('changeValue', 123)
-      }}>value change</button>
+      <Button onClick={() => {
+        socket.current?.emit('send_group_msg', 123)
+      }}>value change</Button>
 
       <Status color={isConnected ? "bg-green-400" : "bg-red-400"}>
         服务器{isConnected ? '正常' : '启动中'}
