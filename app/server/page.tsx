@@ -17,13 +17,11 @@ export default function Server() {
   const [isConnected, setIsConnected] = useState(false);
   const [roomId, setRoomId] = useState<string>("");
   const [hasClient, setHasClient] = useState(false);
-  const [content, setContent] = useState<string>("欢迎使用提词器应用！\n\n在这里输入你的提词内容...\n\n可以通过遥控器控制滚动");
-  const contentRef = useRef<HTMLDivElement>(null);
-  const socket = useRef<Socket | null>(null)
+  const socket = useRef<Socket | null>(null);
   const [promptProp, setPromptProp] = useImmer({
-    isEditing: false,
     fontSize: 80,
-    currentLine: 0
+    currentLine: 0,
+    content: ""
   })
 
   useEffect(() => {
@@ -60,15 +58,9 @@ export default function Server() {
         console.log('receive_group_msg', data)
       })
 
-      // 接收内容更新
-      socket.current.on('content_updated', (data) => {
-        console.log('content_updated', data);
-        setContent(data.content);
-      });
-
       // 接收滚动控制
-      socket.current.on('scroll_updated', (data) => {
-        console.log('scroll_updated', data);
+      socket.current.on('prop_updated', (data) => {
+        // console.log('prop_updated', data);
         setPromptProp(data.data)
       });
     }
@@ -89,23 +81,6 @@ export default function Server() {
     }
   }, [roomId]);
 
-  // 处理内容更新
-  const handleContentUpdate = (newContent: string) => {
-    setContent(newContent);
-    socket.current?.emit('update_content', { content: newContent });
-  };
-
-  // 切换编辑模式
-  const toggleEditMode = () => {
-    if (promptProp.isEditing && content.trim()) {
-      handleContentUpdate(content);
-    }
-    setPromptProp(d => { d.isEditing = !d.isEditing });
-  };
-
-  useEffect(() => {
-
-  }, [promptProp])
 
   return (
     <div className="p-4">
@@ -119,7 +94,10 @@ export default function Server() {
 
           {/* 始终显示房间ID */}
           <div className="flex flex-col items-center space-y-2">
-            <label className="text-sm text-gray-600">房间ID：{roomId}</label>
+            <div className="flex w-full flex-col items-center gap-2 border rounded-md px-2 py-1">
+              <div>房间ID</div>
+              <span className="text-2xl font-bold">{roomId}</span>
+            </div>
             {!hasClient && (
               <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
                 <QRCodeSVG value={roomId} size={200} />
@@ -134,35 +112,15 @@ export default function Server() {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-green-600">遥控器已连接</h2>
-            <Button
-              onClick={toggleEditMode}
-              variant={promptProp.isEditing ? "default" : "outline"}
-              size="sm"
-            >
-              {promptProp.isEditing ? "保存" : "编辑"}
-            </Button>
           </div>
 
-          {promptProp.isEditing ? (
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="输入提词内容..."
-            />
-          ) : (
-            <Prompter {...promptProp}>{content}</Prompter>
-          )}
+
+          <Prompter {...promptProp} />
         </div>
       )}
 
       {/* 控制按钮 */}
       <div className="mt-6 space-y-4">
-        <Button onClick={() => {
-          socket.current?.emit('send_group_msg', 123)
-        }} className="w-full">
-          测试连接
-        </Button>
-
         <div className="flex justify-between items-center text-sm">
           <Status color={isConnected ? "bg-green-400" : "bg-red-400"}>
             服务器{isConnected ? '正常' : '启动中'}

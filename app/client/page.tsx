@@ -1,18 +1,28 @@
 "use client";
 import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Textarea } from "@/components/ui/textarea";
 import { newConnection } from "@/lib/socket";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Socket } from "socket.io-client";
+import { useImmer } from "use-immer";
 
-export default function BarcodeScanner() {
+export default function Client() {
     const [msg, setMsg] = useState<string | null>(null);
     const [roomId, setRoomId] = useState('');
     const [socket, setSocket] = useState<Socket | null>(null);
-    const [content, setContent] = useState<string>("");
-    const [currentLine, setCurrentLine] = useState(0);
 
-    const [isEditing, setIsEditing] = useState(false);
+    const [promptProp, setPromptProp] = useImmer({
+        fontSize: 80,
+        content: "欢迎使用提词器应用！\n在这里输入你的提词内容...\n可以通过遥控器控制滚动",
+        currentLine: 0
+    });
+
+    const contentLength = useMemo(() => {
+        return promptProp.content.split('\n').length
+    }, [promptProp.content])
+
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
@@ -24,23 +34,20 @@ export default function BarcodeScanner() {
 
         socket.on("disconnect", () => {
             console.log('遥控器连接断开');
+            setSocket(null)
         });
 
         // 有用户加入房间
         socket.on('user_join', (data) => {
-            console.log('系统提示', data.message);
+            console.log('系统提示', data);
         });
 
         // 用户离开房间
         socket.on('user_leave', (data) => {
-            console.log('系统提示', data.message);
+            socket.disconnect()
+            setSocket(null);
         });
 
-        // 接收内容更新
-        socket.on('content_updated', (data) => {
-            console.log('content_updated', data);
-            setContent(data.content);
-        });
 
         socket.on('receive_group_msg', (data) => {
             setMsg(JSON.stringify(data))
@@ -57,15 +64,8 @@ export default function BarcodeScanner() {
 
 
     useEffect(() => {
-        socket?.emit('scroll_control', currentLine);
-    }, [currentLine])
-
-    // 处理内容更新
-    const handleContentUpdate = (newContent: string) => {
-        setContent(newContent);
-        socket?.emit('update_content', { content: newContent });
-    };
-
+        socket?.emit('prop_change', promptProp);
+    }, [promptProp])
 
     // const {
     //     ref,
@@ -78,91 +78,80 @@ export default function BarcodeScanner() {
     // });
 
     return (
-        <div className="p-4 max-w-md mx-auto space-y-4">
+        <div>
             {/* 连接部分 */}
             {!socket && (
-                <div className="space-y-4">
-                    <h2 className="text-lg font-semibold text-center">连接提词器</h2>
-                    <div className="space-y-2">
-                        <label className="text-sm text-gray-600">输入房间号</label>
-                        <input
-                            value={roomId}
-                            onChange={(e) => setRoomId(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="请输入房间ID"
-                        />
-                    </div>
-                    <Button
-                        onClick={() => setSocket(newConnection(roomId))}
-                        disabled={!roomId}
-                        className="w-full"
-                    >
-                        连接
-                    </Button>
+                <div className="w-full flex flex-col gap-4 items-center justify-center">
+                    <h1 className="text-lg font-semibold text-center">连接提词器</h1>
+                    <InputOTP value={roomId} onChange={setRoomId} maxLength={6} onComplete={() => {
+                        setSocket(newConnection(roomId))
+                    }}>
+                        <InputOTPGroup>
+                            {new Array(6).fill(0).map((_, i) => <InputOTPSlot index={i} key={'otp' + i} />)}
+                        </InputOTPGroup>
+                    </InputOTP>
+                    <Button onClick={() => {
+                        setSocket(newConnection(roomId))
+                    }}>连接</Button>
                 </div>
             )}
 
             {/* 提词器控制部分 */}
             {socket && (
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-lg font-semibold text-green-600">已连接</h2>
-                        <Button
-                            onClick={() => {
-                                socket.disconnect();
-                                setSocket(null);
-                            }}
-                            variant="outline"
-                            size="sm"
-                        >
-                            断开连接
-                        </Button>
-                    </div>
-
-                    {/* 内容编辑区域 */}
-                    <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                            <label className="text-sm font-medium">提词内容</label>
-                            <Button
-                                onClick={() => {
-                                    if (isEditing) {
-                                        handleContentUpdate(content);
-                                    }
-                                    setIsEditing(!isEditing);
-                                }}
-                                variant={isEditing ? "default" : "outline"}
-                                size="sm"
-                            >
-                                {isEditing ? "保存" : "编辑"}
-                            </Button>
-                        </div>
-                        {isEditing ? (
+                <div className="mx-10 flex flex-col gap-4 items-center justify-center">
+                    <Card className="w-full">
+                        <CardHeader>
+                            <CardTitle>连接信息</CardTitle>
+                            <CardDescription>房间号：{roomId}</CardDescription>
+                            <CardAction>
+                                <Button
+                                    onClick={() => {
+                                        socket.disconnect();
+                                        setSocket(null);
+                                    }}
+                                    variant="outline"
+                                >
+                                    断开连接
+                                </Button>
+                            </CardAction>
+                        </CardHeader>
+                        <CardContent className="flex flex-col gap-3">
                             <Textarea
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
+                                className="resize-none w-auto! h-50"
+                                value={promptProp.content}
+                                onChange={(e) => setPromptProp(p => {
+                                    p.content = e.target.value
+                                })}
                                 placeholder="输入提词内容..."
                             />
-                        ) : (
-                            <div className="w-full h-32 border border-gray-200 rounded-lg overflow-y-auto text-sm whitespace-pre-wrap">
-                                {content || <span className="text-gray-500">暂无内容</span>}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="border px-2 py-1 rounded-md flex flex-col items-center">
+                                    <div>当前行</div>
+                                    <span className="text-green-500 font-bold text-2xl">{promptProp.currentLine}</span>
+                                </div>
+                                <div className="border px-2 py-1 rounded-md flex flex-col items-center">
+                                    <div>字体大小</div>
+                                    <span className="text-green-500 font-bold text-2xl">{promptProp.fontSize}</span>
+                                </div>
                             </div>
-                        )}
-                    </div>
-
-                    {/* 滚动控制 */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">滚动控制</label>
-                        <div>当前行</div>
-                        <div className="grid grid-cols-3 gap-2">
-                            <Button onClick={() => {
-                                setCurrentLine(currentLine <= 0 ? 0 : currentLine - 1)
-                            }}>▲</Button>
-                            <Button onClick={() => {
-                                setCurrentLine(currentLine >= content.split('\n').length ? content.split('\n').length : currentLine + 1)
-                            }}>▼</Button>
-                        </div>
-                    </div>
-
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button className="h-full" onClick={() => {
+                                    setPromptProp(d => { d.fontSize = d.fontSize + 10 })
+                                }}>字体 +</Button>
+                                <Button className="h-full" onClick={() => {
+                                    setPromptProp(d => { d.fontSize = d.fontSize - 10 })
+                                }}>字体 -</Button>
+                            </div>
+                            <div className="grid grid-cols-2 h-30 gap-2">
+                                <Button className="h-full" onClick={() => {
+                                    setPromptProp(d => { d.currentLine = d.currentLine <= 0 ? 0 : d.currentLine - 1 })
+                                }}>▲ 上一行</Button>
+                                <Button className="h-full" onClick={() => {
+                                    setPromptProp(d => { d.currentLine = d.currentLine >= contentLength - 1 ? contentLength - 1 : d.currentLine + 1 })
+                                }}>▼ 下一行</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                     {/* 消息显示 */}
                     {msg && (
                         <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
