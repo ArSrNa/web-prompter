@@ -3,17 +3,28 @@
 import { PropsWithChildren, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
-import { io, Socket } from "socket.io-client";
+import { Socket } from "socket.io-client";
 import { uuid } from "@/utils/uuid";
 import { newConnection } from "@/lib/socket";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useImmer } from "use-immer";
+import Prompter from "@/components/prompter";
+
 
 
 export default function Server() {
   const [isConnected, setIsConnected] = useState(false);
-  const [transport, setTransport] = useState("N/A");
   const [roomId, setRoomId] = useState<string>("");
+  const [hasClient, setHasClient] = useState(false);
+  const [content, setContent] = useState<string>("欢迎使用提词器应用！\n\n在这里输入你的提词内容...\n\n可以通过遥控器控制滚动");
+  const contentRef = useRef<HTMLDivElement>(null);
   const socket = useRef<Socket | null>(null)
+  const [promptProp, setPromptProp] = useImmer({
+    isEditing: false,
+    fontSize: 80,
+    currentLine: 0
+  })
 
   useEffect(() => {
     // 在客户端挂载后生成 roomId
@@ -29,6 +40,13 @@ export default function Server() {
     // 有用户加入房间
     socket.current.on('user_join', (data) => {
       console.log('系统提示', data.message, 'system');
+      setHasClient(true);
+    });
+
+    // 用户离开房间
+    socket.current.on('user_leave', (data) => {
+      console.log('系统提示', data.message, 'system');
+      setHasClient(false);
     });
 
     if (socket.current.connected) {
@@ -38,18 +56,26 @@ export default function Server() {
     function onConnect() {
       if (!socket.current) return;
       setIsConnected(true);
-      setTransport(socket.current.io.engine.transport.name);
-      // socket.io.engine.on("upgrade", (transport) => {
-      //   setTransport(transport.name);
-      // });
       socket.current.on('receive_group_msg', (data) => {
         console.log('receive_group_msg', data)
       })
+
+      // 接收内容更新
+      socket.current.on('content_updated', (data) => {
+        console.log('content_updated', data);
+        setContent(data.content);
+      });
+
+      // 接收滚动控制
+      socket.current.on('scroll_updated', (data) => {
+        console.log('scroll_updated', data);
+        setPromptProp(data.data)
+      });
     }
 
     function onDisconnect() {
       setIsConnected(false);
-      setTransport("N/A");
+      setHasClient(false);
     }
 
     socket.current.on("connect", onConnect);
@@ -63,25 +89,90 @@ export default function Server() {
     }
   }, [roomId]);
 
+  // 处理内容更新
+  const handleContentUpdate = (newContent: string) => {
+    setContent(newContent);
+    socket.current?.emit('update_content', { content: newContent });
+  };
+
+  // 切换编辑模式
+  const toggleEditMode = () => {
+    if (promptProp.isEditing && content.trim()) {
+      handleContentUpdate(content);
+    }
+    setPromptProp(d => { d.isEditing = !d.isEditing });
+  };
+
+  useEffect(() => {
+
+  }, [promptProp])
+
   return (
-    <div>
-      <label>ID：{roomId}</label>
-      <div className="bg-white p-2">
-        <QRCodeSVG value={roomId} />
+    <div className="p-4">
+      {/* 连接信息 */}
+      {roomId && (
+        <div className="space-y-4 mb-6">
+          {/* 只有没有客户端连接时才显示二维码 */}
+          {!hasClient && (
+            <h2 className="text-lg font-semibold text-center">扫描二维码连接遥控器</h2>
+          )}
+
+          {/* 始终显示房间ID */}
+          <div className="flex flex-col items-center space-y-2">
+            <label className="text-sm text-gray-600">房间ID：{roomId}</label>
+            {!hasClient && (
+              <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
+                <QRCodeSVG value={roomId} size={200} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 提词器内容区域 */}
+      {hasClient && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-green-600">遥控器已连接</h2>
+            <Button
+              onClick={toggleEditMode}
+              variant={promptProp.isEditing ? "default" : "outline"}
+              size="sm"
+            >
+              {promptProp.isEditing ? "保存" : "编辑"}
+            </Button>
+          </div>
+
+          {promptProp.isEditing ? (
+            <Textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="输入提词内容..."
+            />
+          ) : (
+            <Prompter {...promptProp}>{content}</Prompter>
+          )}
+        </div>
+      )}
+
+      {/* 控制按钮 */}
+      <div className="mt-6 space-y-4">
+        <Button onClick={() => {
+          socket.current?.emit('send_group_msg', 123)
+        }} className="w-full">
+          测试连接
+        </Button>
+
+        <div className="flex justify-between items-center text-sm">
+          <Status color={isConnected ? "bg-green-400" : "bg-red-400"}>
+            服务器{isConnected ? '正常' : '启动中'}
+          </Status>
+
+          <Status color={hasClient ? "bg-green-400" : "bg-red-400"}>
+            {hasClient ? '已连接' : '未连接'}遥控器
+          </Status>
+        </div>
       </div>
-
-      <Button onClick={() => {
-        socket.current?.emit('send_group_msg', 123)
-      }}>value change</Button>
-
-      <Status color={isConnected ? "bg-green-400" : "bg-red-400"}>
-        服务器{isConnected ? '正常' : '启动中'}
-      </Status>
-
-      <Status color={isConnected ? "bg-green-400" : "bg-red-400"}>
-        {isConnected ? '已连接' : '未连接'}客户端
-      </Status>
-      <p>Transport: {transport}</p>
     </div>
   );
 }
@@ -94,3 +185,4 @@ function Status({ color, children }: PropsWithChildren<{
     <span>{children}</span>
   </div>
 }
+
