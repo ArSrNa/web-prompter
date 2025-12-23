@@ -4,20 +4,21 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Textarea } from "@/components/ui/textarea";
 import { newConnection } from "@/lib/socket";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, Suspense } from "react";
 import { Socket } from "socket.io-client";
-import { useImmer } from "use-immer";
+import { useAtom } from 'jotai';
+import { persistentPromptPropAtom } from '@/lib/atoms';
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
-export default function Client() {
+function ClientComponent() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
     const [msg, setMsg] = useState<string | null>(null);
     const [roomId, setRoomId] = useState('');
     const [socket, setSocket] = useState<Socket | null>(null);
 
-    const [promptProp, setPromptProp] = useImmer({
-        fontSize: 80,
-        content: "欢迎使用提词器应用！\n在这里输入你的提词内容...\n可以通过遥控器控制滚动",
-        currentLine: 0
-    });
+    const [promptProp, setPromptProp] = useAtom(persistentPromptPropAtom);
 
     const contentLength = useMemo(() => {
         return promptProp.content.split('\n').length
@@ -26,15 +27,26 @@ export default function Client() {
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
+        const urlRoomId = searchParams.get('roomId');
+        if (urlRoomId) {
+            setRoomId(urlRoomId);
+            if (!socket) {
+                setSocket(newConnection(urlRoomId));
+            }
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
         if (!socket) return;
 
         socket.on("connect", () => {
             console.log('遥控器连接成功');
+            socket?.emit('prop_change', promptProp);
         });
 
         socket.on("disconnect", () => {
             console.log('遥控器连接断开');
-            setSocket(null)
+            setSocket(null);
         });
 
         // 有用户加入房间
@@ -44,8 +56,8 @@ export default function Client() {
 
         // 用户离开房间
         socket.on('user_leave', (data) => {
-            socket.disconnect()
             setSocket(null);
+            router.push(pathname);
         });
 
 
@@ -65,17 +77,7 @@ export default function Client() {
 
     useEffect(() => {
         socket?.emit('prop_change', promptProp);
-    }, [promptProp])
-
-    // const {
-    //     ref,
-    //     torch: { on, off, isOn, isAvailable },
-    // } = useZxing({
-    //     onDecodeResult(result) {
-    //         setResult(result.getText());
-    //         setRoomId(result.getText())
-    //     },
-    // });
+    }, [promptProp]);
 
     return (
         <div>
@@ -84,14 +86,18 @@ export default function Client() {
                 <div className="w-full flex flex-col gap-4 items-center justify-center">
                     <h1 className="text-lg font-semibold text-center">连接提词器</h1>
                     <InputOTP value={roomId} onChange={setRoomId} maxLength={6} onComplete={() => {
-                        setSocket(newConnection(roomId))
+                        if (roomId.length === 6) {
+                            router.push(`${pathname}?roomId=${roomId}`);
+                        }
                     }}>
                         <InputOTPGroup>
                             {new Array(6).fill(0).map((_, i) => <InputOTPSlot index={i} key={'otp' + i} />)}
                         </InputOTPGroup>
                     </InputOTP>
                     <Button onClick={() => {
-                        setSocket(newConnection(roomId))
+                        if (roomId.length === 6) {
+                            router.push(`${pathname}?roomId=${roomId}`);
+                        }
                     }}>连接</Button>
                 </div>
             )}
@@ -107,7 +113,6 @@ export default function Client() {
                                 <Button
                                     onClick={() => {
                                         socket.disconnect();
-                                        setSocket(null);
                                     }}
                                     variant="outline"
                                 >
@@ -119,8 +124,9 @@ export default function Client() {
                             <Textarea
                                 className="resize-none w-auto! h-50"
                                 value={promptProp.content}
-                                onChange={(e) => setPromptProp(p => {
-                                    p.content = e.target.value
+                                onChange={(e) => setPromptProp({
+                                    ...promptProp,
+                                    content: e.target.value
                                 })}
                                 placeholder="输入提词内容..."
                             />
@@ -134,20 +140,33 @@ export default function Client() {
                                     <span className="text-green-500 font-bold text-2xl">{promptProp.fontSize}</span>
                                 </div>
                             </div>
+
                             <div className="grid grid-cols-2 gap-2">
                                 <Button className="h-full" onClick={() => {
-                                    setPromptProp(d => { d.fontSize = d.fontSize + 10 })
+                                    setPromptProp({
+                                        ...promptProp,
+                                        fontSize: promptProp.fontSize + 10
+                                    })
                                 }}>字体 +</Button>
                                 <Button className="h-full" onClick={() => {
-                                    setPromptProp(d => { d.fontSize = d.fontSize - 10 })
+                                    setPromptProp({
+                                        ...promptProp,
+                                        fontSize: promptProp.fontSize - 10
+                                    })
                                 }}>字体 -</Button>
                             </div>
                             <div className="grid grid-cols-2 h-30 gap-2">
                                 <Button className="h-full" onClick={() => {
-                                    setPromptProp(d => { d.currentLine = d.currentLine <= 0 ? 0 : d.currentLine - 1 })
+                                    setPromptProp({
+                                        ...promptProp,
+                                        currentLine: Math.max(0, promptProp.currentLine - 1)
+                                    })
                                 }}>▲ 上一行</Button>
                                 <Button className="h-full" onClick={() => {
-                                    setPromptProp(d => { d.currentLine = d.currentLine >= contentLength - 1 ? contentLength - 1 : d.currentLine + 1 })
+                                    setPromptProp({
+                                        ...promptProp,
+                                        currentLine: Math.min(contentLength - 1, promptProp.currentLine + 1)
+                                    })
                                 }}>▼ 下一行</Button>
                             </div>
                         </CardContent>
@@ -161,5 +180,13 @@ export default function Client() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function Client() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <ClientComponent />
+        </Suspense>
     );
 };

@@ -100,7 +100,7 @@ export default function Server() {
             </div>
             {!hasClient && (
               <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
-                <QRCodeSVG value={roomId} size={200} />
+                <QRCodeSVG value={'https://prompter.arsrna.cn/client?roomId=' + roomId} size={200} />
               </div>
             )}
           </div>

@@ -1,7 +1,8 @@
 import { io } from "socket.io-client";
 
 export function newConnection(roomId: string) {
-    return io({
+    return io('api-gz.arsrna.cn', {
+        path: "/release/prompter-server/socket.io",
         query: { roomId },
         autoConnect: true,
         transports: ['polling'],

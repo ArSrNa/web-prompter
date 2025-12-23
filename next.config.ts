@@ -5,6 +5,7 @@ const CNBHost = new URL(
 
 const nextConfig: NextConfig = {
   /* config options here */
+  output: 'export',
   reactStrictMode: false,
   allowedDevOrigins: [CNBHost],
 };
