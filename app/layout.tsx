@@ -29,6 +29,7 @@ export default function DashboardLayout({
                         <main>{children}</main>
                         <div className='flex flex-col gap-2 py-4 items-center justify-center text-gray-400'>
                             Powered by Ar-Sr-Na
+                            <a href='https://beian.miit.gov.cn' target='_blank' className='text-blue-400'>沪ICP备2023039698号-1</a>
                         </div>
                     </ThemeProvider>
                 </Provider>
