@@ -5,7 +5,7 @@ export function newConnection(roomId: string) {
         path: "/release/prompter-server/socket.io",
         query: { roomId },
         autoConnect: true,
-        transports: ['polling'],
+        // transports: ['polling'],
         timeout: 10000,
         // 重连配置
         reconnection: true,

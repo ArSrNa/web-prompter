@@ -6,8 +6,6 @@ import { QRCodeSVG } from "qrcode.react";
 import { Socket } from "socket.io-client";
 import { uuid } from "@/utils/uuid";
 import { newConnection } from "@/lib/socket";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { useImmer } from "use-immer";
 import Prompter from "@/components/prompter";
 
@@ -93,7 +91,7 @@ export default function Server() {
           )}
 
           {/* 始终显示房间ID */}
-          <div className="flex flex-col items-center space-y-2">
+          <div className="flex flex-col items-center space-y-2 mx-2">
             <div className="flex w-full flex-col items-center gap-2 border rounded-md px-2 py-1">
               <div>房间ID</div>
               <span className="text-2xl font-bold">{roomId}</span>
@@ -113,8 +111,6 @@ export default function Server() {
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-green-600">遥控器已连接</h2>
           </div>
-
-
           <Prompter {...promptProp} />
         </div>
       )}
