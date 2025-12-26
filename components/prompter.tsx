@@ -1,9 +1,10 @@
 import { PropsWithChildren, useEffect, useRef } from "react";
 
-export default function Prompter({ content, currentLine, fontSize }: {
+export default function Prompter({ content, currentLine, fontSize, scaleX }: {
     currentLine: number,
     fontSize: number,
-    content: string
+    content: string,
+    scaleX: number
 }) {
     const currentLineRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -16,13 +17,16 @@ export default function Prompter({ content, currentLine, fontSize }: {
     }, [currentLine])
     return <>
         <div
-            className="p-2 h-screen overflow-y-auto whitespace-pre-wrap border"
+            className="py-2 px-10 h-screen overflow-y-auto whitespace-pre-wrap border"
             style={{ fontSize }}
         >
             {content?.toString().split('\n').map((m, i) => {
                 const isCurrentLine = i === currentLine
                 return <div
                     className={`${isCurrentLine ? "text-white" : "text-gray-500"}`}
+                    style={{
+                        transform: `scaleX(${scaleX})`
+                    }}
                     key={`line_${i}`} ref={isCurrentLine ? currentLineRef : null}>
                     {m}
                 </div>

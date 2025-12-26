@@ -19,7 +19,8 @@ export default function Server() {
   const [promptProp, setPromptProp] = useImmer({
     fontSize: 80,
     currentLine: 0,
-    content: ""
+    content: "",
+    scaleX: -1
   })
 
   useEffect(() => {

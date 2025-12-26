@@ -169,6 +169,12 @@ function ClientComponent() {
                                     })
                                 }}>▼ 下一行</Button>
                             </div>
+                            <Button onClick={() => {
+                                setPromptProp({
+                                    ...promptProp,
+                                    scaleX: promptProp.scaleX === -1 ? 1 : -1
+                                })
+                            }}>翻转</Button>
                         </CardContent>
                     </Card>
                     {/* 消息显示 */}
