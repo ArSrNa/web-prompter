@@ -25,7 +25,7 @@ export default function Prompter({ content, currentLine, fontSize, scaleX }: {
                 return <div
                     className={`${isCurrentLine ? "text-white" : "text-gray-500"}`}
                     style={{
-                        transform: `scaleX(${scaleX})`
+                        transform: `scaleX(${scaleX})`,
                     }}
                     key={`line_${i}`} ref={isCurrentLine ? currentLineRef : null}>
                     {m}

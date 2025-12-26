@@ -1,6 +1,6 @@
 {
     "recommendations": [
-        "timsexperiments.vscode-tailwindcss",
-        "wakatime.vscode-wakatime"
+        "wakatime.vscode-wakatime",
+        "bradlc.vscode-tailwindcss"
     ]
 }
