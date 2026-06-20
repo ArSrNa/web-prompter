@@ -1,10 +1,12 @@
 import { PropsWithChildren, useEffect, useRef } from "react";
 
-export default function Prompter({ content, currentLine, fontSize, scaleX }: {
+export default function Prompter({ content, currentLine, fontSize, scaleX, fullScreen = true, className }: {
     currentLine: number,
     fontSize: number,
     content: string,
-    scaleX: number
+    scaleX: number,
+    fullScreen?: boolean,
+    className?: string
 }) {
     const currentLineRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -13,11 +15,10 @@ export default function Prompter({ content, currentLine, fontSize, scaleX }: {
             block: "center",
             inline: "center"
         });
-        console.log('cr')
     }, [currentLine])
     return <>
         <div
-            className="py-2 px-10 h-screen overflow-y-auto whitespace-pre-wrap border"
+            className={`py-2 px-10 overflow-y-auto whitespace-pre-wrap border ${fullScreen ? 'h-screen' : 'h-full'} ${className || ''}`}
             style={{ fontSize }}
         >
             {content?.toString().split('\n').map((m, i) => {
