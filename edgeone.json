@@ -1,0 +1,5 @@
+{
+  "installCommand": "pnpm i",
+  "buildCommand": "pnpm run build",
+  "nodeVersion": "24.5.0"
+}

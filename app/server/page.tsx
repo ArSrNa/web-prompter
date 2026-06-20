@@ -3,11 +3,10 @@
 import { PropsWithChildren, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
-import { Socket } from "socket.io-client";
 import { uuid } from "@/utils/uuid";
-import { newConnection } from "@/lib/socket";
 import { useImmer } from "use-immer";
 import Prompter from "@/components/prompter";
+import { PrompterWebRTCConnection } from "@/lib/webrtc-prompter";
 
 
 
@@ -15,7 +14,7 @@ export default function Server() {
   const [isConnected, setIsConnected] = useState(false);
   const [roomId, setRoomId] = useState<string>("");
   const [hasClient, setHasClient] = useState(false);
-  const socket = useRef<Socket | null>(null);
+  const webrtc = useRef<PrompterWebRTCConnection | null>(null);
   const [promptProp, setPromptProp] = useImmer({
     fontSize: 80,
     currentLine: 0,
@@ -32,52 +31,49 @@ export default function Server() {
 
   useEffect(() => {
     if (!roomId) return;
-    socket.current = newConnection(roomId);
 
-    // 有用户加入房间
-    socket.current.on('user_join', (data) => {
-      console.log('系统提示', data.message, 'system');
-      setHasClient(true);
+    // 创建 WebRTC 连接（服务端作为发起者）
+    const connection = new PrompterWebRTCConnection({
+      roomId,
+      signalingUrl: process.env.NEXT_PUBLIC_SIGNALING_URL,
+      isInitiator: true,
+      onPropUpdate: (data) => {
+        // console.log('收到属性更新:', data);
+        setPromptProp(data);
+      },
+      onUserJoin: (data) => {
+        console.log('用户加入:', data.message);
+        setHasClient(true);
+      },
+      onUserLeave: (data) => {
+        console.log('用户离开:', data.message);
+        setHasClient(false);
+      },
+      onConnect: () => {
+        console.log('P2P 连接成功');
+        setIsConnected(true);
+        setHasClient(true);  // 当 P2P 连接建立时，说明客户端已连接
+      },
+      onDisconnect: () => {
+        console.log('P2P 连接断开');
+        setIsConnected(false);
+        setHasClient(false);
+      },
+      onError: (error) => {
+        console.error('WebRTC 错误:', error);
+      }
     });
 
-    // 用户离开房间
-    socket.current.on('user_leave', (data) => {
-      console.log('系统提示', data.message, 'system');
-      setHasClient(false);
+    // 连接到信令服务器
+    connection.connect().then(() => {
+      console.log('已连接到信令服务器');
     });
 
-    if (socket.current.connected) {
-      onConnect();
-    }
-
-    function onConnect() {
-      if (!socket.current) return;
-      setIsConnected(true);
-      socket.current.on('receive_group_msg', (data) => {
-        console.log('receive_group_msg', data)
-      })
-
-      // 接收滚动控制
-      socket.current.on('prop_updated', (data) => {
-        // console.log('prop_updated', data);
-        setPromptProp(data.data)
-      });
-    }
-
-    function onDisconnect() {
-      setIsConnected(false);
-      setHasClient(false);
-    }
-
-    socket.current.on("connect", onConnect);
-    socket.current.on("disconnect", onDisconnect);
+    webrtc.current = connection;
 
     return () => {
-      if (socket.current) {
-        socket.current.off("connect", onConnect);
-        socket.current.off("disconnect", onDisconnect);
-      };
-    }
+      connection.disconnect();
+    };
   }, [roomId]);
 
 

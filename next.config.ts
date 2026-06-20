@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   output: 'export',
   reactStrictMode: false,
-  allowedDevOrigins: [CNBHost],
+  allowedDevOrigins: [CNBHost, '127.0.0.1'],
 };
 
 export default nextConfig;

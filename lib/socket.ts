@@ -1,15 +1,7 @@
-import { io } from "socket.io-client";
+// 此文件已废弃，提词器应用已改用 WebRTC
+// 保留此文件以避免其他潜在引用报错
 
 export function newConnection(roomId: string) {
-    return io('api-gz.arsrna.cn', {
-        path: "/release/prompter-server/socket.io",
-        query: { roomId },
-        autoConnect: true,
-        // transports: ['polling'],
-        timeout: 10000,
-        // 重连配置
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000
-    });
+  console.warn("Socket.IO 连接已废弃，请使用 WebRTC");
+  return null;
 }

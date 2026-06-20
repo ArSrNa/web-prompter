@@ -11,6 +11,7 @@ $:
         - name: 安装依赖
           script: bun i
 
+"**":
   push:
     sync_to_github:
       runner:
@@ -28,20 +29,39 @@ $:
             username: ${GIT_USERNAME}
             password: ${GIT_ACCESS_TOKEN}
             git_email: "root@arsrna.cn"
+            force: true
 
-    # eo-deploy:
-    #   services:
-    #     - docker
-    #   runner:
-    #     cpus: 16
-    #   docker:
-    #     image: node:24
-    #   stages:
-    #     - name: 安装bun
-    #       script: npm i -g bun
-    #     - name: 安装依赖
-    #       script: bun i
-    #     - name: 构建
-    #       script: bun run build
-    #     - name: eo deploy
-    #       script: bun publish
+main:
+  push:
+    build_server:
+      services:
+        - docker
+      stages:
+        # - name: CNB推送
+        #   script: docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest -f Dockerfile.signaling . --push
+        - name: 登录、构建、推送
+          imports:
+            - https://cnb.cool/arsrna/env/-/blob/main/ccr.yaml
+          script:
+            - docker login ccr.ccs.tencentyun.com --username=${CCR_UIN} --password=${CCR_PASSWORD}
+            - docker build -t ccr.ccs.tencentyun.com/tcb-${CCR_UIN}-iydy/websites:webprompter-signaling . --push
+
+    eo-deploy:
+      services:
+        - docker
+      runner:
+        cpus: 32
+      docker:
+        image: docker.cnb.cool/arsrna/dev-image/nodejs
+        volumes:
+          - /root/.bun/install/cache
+      stages:
+        - name: 构建
+          script:
+            - bun i
+            - bun run build
+        - name: EO推送
+          imports:
+            - https://cnb.cool/arsrna/env/-/blob/main/tencent.yml
+          script:
+            - bunx edgeone makers deploy ./out -n web-prompter -t $EO_SECRET

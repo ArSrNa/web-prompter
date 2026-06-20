@@ -3,12 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Textarea } from "@/components/ui/textarea";
-import { newConnection } from "@/lib/socket";
 import { useEffect, useState, useRef, useMemo, Suspense } from "react";
-import { Socket } from "socket.io-client";
 import { useAtom } from 'jotai';
 import { persistentPromptPropAtom } from '@/lib/atoms';
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { PrompterWebRTCConnection } from "@/lib/webrtc-prompter";
 
 function ClientComponent() {
     const searchParams = useSearchParams();
@@ -16,7 +15,8 @@ function ClientComponent() {
     const pathname = usePathname();
     const [msg, setMsg] = useState<string | null>(null);
     const [roomId, setRoomId] = useState('');
-    const [socket, setSocket] = useState<Socket | null>(null);
+    const [webrtc, setWebrtc] = useState<PrompterWebRTCConnection | null>(null);
+    const [isConnected, setIsConnected] = useState(false);
 
     const [promptProp, setPromptProp] = useAtom(persistentPromptPropAtom);
 
@@ -28,61 +28,66 @@ function ClientComponent() {
 
     useEffect(() => {
         const urlRoomId = searchParams.get('roomId');
-        if (urlRoomId) {
+        if (urlRoomId && !webrtc) {
             setRoomId(urlRoomId);
-            if (!socket) {
-                setSocket(newConnection(urlRoomId));
-            }
+
+            // 创建 WebRTC 连接（客户端作为接收者）
+            const connection = new PrompterWebRTCConnection({
+                roomId: urlRoomId,
+                signalingUrl: process.env.NEXT_PUBLIC_SIGNALING_URL || "http://localhost:9000",
+                isInitiator: false,
+                onConnect: () => {
+                    console.log('遥控器 P2P 连接成功');
+                    setIsConnected(true);
+                    // 连接成功后发送当前属性
+                    connection.sendPropChange(promptProp);
+                },
+                onDisconnect: () => {
+                    console.log('遥控器 P2P 连接断开');
+                    setIsConnected(false);
+                    setWebrtc(null);
+                    router.push(pathname);
+                },
+                onError: (error) => {
+                    console.error('WebRTC 错误:', error);
+                }
+            });
+
+            // 连接到信令服务器
+            connection.connect().then(() => {
+                console.log('遥控器已连接到信令服务器');
+            });
+
+            setWebrtc(connection);
+        }
+
+        return () => {
+            // 清理函数
         }
     }, [searchParams]);
 
     useEffect(() => {
-        if (!socket) return;
-
-        socket.on("connect", () => {
-            console.log('遥控器连接成功');
-            socket?.emit('prop_change', promptProp);
-        });
-
-        socket.on("disconnect", () => {
-            console.log('遥控器连接断开');
-            setSocket(null);
-        });
-
-        // 有用户加入房间
-        socket.on('user_join', (data) => {
-            console.log('系统提示', data);
-        });
-
-        // 用户离开房间
-        socket.on('user_leave', (data) => {
-            setSocket(null);
-            router.push(pathname);
-        });
-
-
-        socket.on('receive_group_msg', (data) => {
-            setMsg(JSON.stringify(data))
-        })
-
         return () => {
-            if (socket) socket.disconnect()
             // 清理滚动定时器
             if (scrollIntervalRef.current) {
                 clearInterval(scrollIntervalRef.current);
             }
+            // 断开 WebRTC 连接
+            webrtc?.disconnect();
         }
-    }, [socket]);
+    }, []);
 
-
+    // 当属性变化时，通过 WebRTC 发送
     useEffect(() => {
-        socket?.emit('prop_change', promptProp);
-    }, [promptProp]);
+        if (webrtc && isConnected) {
+            webrtc.sendPropChange(promptProp);
+        }
+    }, [promptProp, webrtc, isConnected]);
 
     return (
         <div>
             {/* 连接部分 */}
-            {!socket && (
+            {!webrtc && (
                 <div className="w-full flex flex-col gap-4 items-center justify-center">
                     <h1 className="text-lg font-semibold text-center">连接提词器</h1>
                     <InputOTP value={roomId} onChange={setRoomId} maxLength={6} onComplete={() => {
@@ -103,7 +108,7 @@ function ClientComponent() {
             )}
 
             {/* 提词器控制部分 */}
-            {socket && (
+            {webrtc && isConnected && (
                 <div className="mx-10 flex flex-col gap-4 items-center justify-center">
                     <Card className="w-full">
                         <CardHeader>
@@ -112,7 +117,9 @@ function ClientComponent() {
                             <CardAction>
                                 <Button
                                     onClick={() => {
-                                        socket.disconnect();
+                                        webrtc?.disconnect();
+                                        setWebrtc(null);
+                                        setIsConnected(false);
                                     }}
                                     variant="outline"
                                 >
