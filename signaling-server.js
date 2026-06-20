@@ -17,12 +17,12 @@ const io = new Server(httpServer, {
 // 存储房间和用户的映射
 const rooms = new Map();
 
-console.log(`🚀 WebRTC Signaling Server 启动中...`);
+console.log(` WebRTC Signaling Server 启动中...`);
 console.log(`   端口: ${port}`);
 console.log(`   环境: ${process.env.NODE_ENV || 'development'}`);
 
 io.on("connection", (socket) => {
-  console.log(`✅ 新的信令连接: ${socket.id}`);
+  console.log(` 新的信令连接: ${socket.id}`);
 
   // 加入房间
   socket.on("join", (roomId) => {
@@ -31,7 +31,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    console.log(`📥 用户 ${socket.id} 尝试加入房间 ${roomId}`);
+    console.log(` 用户 ${socket.id} 尝试加入房间 ${roomId}`);
 
     // 如果房间不存在，创建它
     if (!rooms.has(roomId)) {
@@ -42,7 +42,7 @@ io.on("connection", (socket) => {
 
     // 检查房间是否已满（最多2人）
     if (room.size >= 2) {
-      console.log(`⚠️ 房间 ${roomId} 已满`);
+      console.log(` 房间 ${roomId} 已满`);
       socket.emit("room-full", {
         roomId,
         message: "房间已满，请稍后再试"
@@ -55,7 +55,7 @@ io.on("connection", (socket) => {
     socket.join(roomId);
     socket.data.roomId = roomId;
 
-    console.log(`✅ 用户 ${socket.id} 加入房间 ${roomId}，当前房间人数: ${room.size}`);
+    console.log(` 用户 ${socket.id} 加入房间 ${roomId}，当前房间人数: ${room.size}`);
 
     // 通知用户加入成功
     socket.emit("joined", {
@@ -72,7 +72,7 @@ io.on("connection", (socket) => {
 
     // 如果房间有2个人，通知双方可以开始连接
     if (room.size === 2) {
-      console.log(`🎉 房间 ${roomId} 已满，通知双方开始 P2P 连接`);
+      console.log(` 房间 ${roomId} 已满，通知双方开始 P2P 连接`);
       io.to(roomId).emit("ready", {
         message: "房间已满，可以开始 P2P 连接"
       });
@@ -82,10 +82,10 @@ io.on("connection", (socket) => {
   // 转发 offer
   socket.on("offer", (data) => {
     if (!data || !data.roomId || !data.offer) {
-      console.warn(`⚠️ 收到无效的 offer 数据`);
+      console.warn(` 收到无效的 offer 数据`);
       return;
     }
-    console.log(`📤 转发 offer 从 ${socket.id} 到房间 ${data.roomId}`);
+    console.log(` 转发 offer 从 ${socket.id} 到房间 ${data.roomId}`);
     socket.to(data.roomId).emit("offer", {
       offer: data.offer,
       senderId: socket.id
@@ -95,10 +95,10 @@ io.on("connection", (socket) => {
   // 转发 answer
   socket.on("answer", (data) => {
     if (!data || !data.roomId || !data.answer) {
-      console.warn(`⚠️ 收到无效的 answer 数据`);
+      console.warn(` 收到无效的 answer 数据`);
       return;
     }
-    console.log(`📤 转发 answer 从 ${socket.id} 到房间 ${data.roomId}`);
+    console.log(` 转发 answer 从 ${socket.id} 到房间 ${data.roomId}`);
     socket.to(data.roomId).emit("answer", {
       answer: data.answer,
       senderId: socket.id
@@ -108,7 +108,7 @@ io.on("connection", (socket) => {
   // 转发 ICE candidate
   socket.on("ice-candidate", (data) => {
     if (!data || !data.roomId || !data.candidate) {
-      console.warn(`⚠️ 收到无效的 ICE candidate 数据`);
+      console.warn(` 收到无效的 ICE candidate 数据`);
       return;
     }
     socket.to(data.roomId).emit("ice-candidate", {
@@ -131,7 +131,7 @@ io.on("connection", (socket) => {
 
   // 断开连接
   socket.on("disconnect", () => {
-    console.log(`❌ 信令连接断开: ${socket.id}`);
+    console.log(` 信令连接断开: ${socket.id}`);
     const roomId = socket.data.roomId;
 
     if (roomId && rooms.has(roomId)) {
@@ -146,9 +146,9 @@ io.on("connection", (socket) => {
 
       if (room.size === 0) {
         rooms.delete(roomId);
-        console.log(`🗑️ 房间 ${roomId} 已清空并删除`);
+        console.log(` 房间 ${roomId} 已清空并删除`);
       } else {
-        console.log(`ℹ️ 房间 ${roomId} 剩余人数: ${room.size}`);
+        console.log(`ℹ 房间 ${roomId} 剩余人数: ${room.size}`);
       }
     }
   });
@@ -167,24 +167,24 @@ httpServer.on("request", (req, res) => {
 });
 
 httpServer.listen(port, host, () => {
-  console.log(`✅ WebRTC 信令服务器运行在 http://${host}:${port}`);
+  console.log(` WebRTC 信令服务器运行在 http://${host}:${port}`);
   console.log(`   健康检查: http://${host}:${port}/health`);
   console.log(`   等待 P2P 连接建立...`);
 });
 
 // 优雅关闭
 process.on("SIGTERM", () => {
-  console.log("🛑 收到 SIGTERM 信号，正在关闭服务器...");
+  console.log(" 收到 SIGTERM 信号，正在关闭服务器...");
   io.close(() => {
-    console.log("✅ 服务器已关闭");
+    console.log(" 服务器已关闭");
     process.exit(0);
   });
 });
 
 process.on("SIGINT", () => {
-  console.log("🛑 收到 SIGINT 信号，正在关闭服务器...");
+  console.log(" 收到 SIGINT 信号，正在关闭服务器...");
   io.close(() => {
-    console.log("✅ 服务器已关闭");
+    console.log(" 服务器已关闭");
     process.exit(0);
   });
 });

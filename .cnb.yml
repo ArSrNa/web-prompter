@@ -44,7 +44,7 @@ main:
             - https://cnb.cool/arsrna/env/-/blob/main/ccr.yaml
           script:
             - docker login ccr.ccs.tencentyun.com --username=${CCR_UIN} --password=${CCR_PASSWORD}
-            - docker build -t ccr.ccs.tencentyun.com/tcb-${CCR_UIN}-iydy/websites:webprompter-signaling . --push
+            - docker build -t ccr.ccs.tencentyun.com/tcb-${CCR_UIN}-iydy/websites:webprompter-signaling -f Dockerfile.signaling . --push
 
     eo-deploy:
       services:
