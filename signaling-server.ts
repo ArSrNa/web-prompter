@@ -3,6 +3,8 @@ import { createServer } from "node:http";
 
 const port = process.env.PORT || 9000;
 const host = process.env.HOST || "0.0.0.0";
+// Socket.IO path 配置（支持通过环境变量自定义）
+const socketPath = process.env.SOCKET_PATH || "/socket.io/";
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
@@ -11,8 +13,11 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"],
     credentials: true
   },
-  transports: ["websocket", "polling"]
+  transports: ["websocket", "polling"],
+  path: socketPath
 });
+
+console.log(`📡 Socket.IO path: ${socketPath}`);
 
 // 存储房间和用户的映射
 const rooms = new Map<string, Set<string>>();
