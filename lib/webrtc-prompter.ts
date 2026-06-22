@@ -53,21 +53,10 @@ export class PrompterWebRTCConnection {
         console.log("最终使用的 Signaling URL:", signalingUrl);
 
         // 连接到信令服务器
-        // 解析 URL 以获取正确的 Socket.IO path
-        let socketPath = '/socket.io/';
-        try {
-          const urlObj = new URL(signalingUrl);
-          // 如果 URL 有路径前缀，需要将其加到 Socket.IO path 前面
-          // 例如：https://api-gz.arsrna.cn/release/prompter-server
-          // 那么 Socket.IO path 应该是 /release/prompter-server/socket.io/
-          if (urlObj.pathname && urlObj.pathname !== '/') {
-            socketPath = urlObj.pathname.replace(/\/$/, '') + '/socket.io/';
-          }
-          console.log("Signaling URL pathname:", urlObj.pathname);
-          console.log("计算出的 Socket.IO path:", socketPath);
-        } catch (e) {
-          console.warn("解析 URL 失败:", e);
-        }
+        // 使用 URL pathname 构造 Socket.IO path
+        const urlObj = new URL(signalingUrl);
+        const socketPath = urlObj.pathname + '/socket.io/';
+        console.log("Socket.IO path:", socketPath);
 
         this.socket = io(signalingUrl, {
           transports: ["websocket", "polling"],
