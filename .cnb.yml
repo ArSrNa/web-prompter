@@ -56,12 +56,14 @@ main:
         volumes:
           - /root/.bun/install/cache
       stages:
-        - name: 构建
+        - name: 安装依赖并构建
           script:
             - bun i
             - bun run build
-        - name: EO推送
+            - echo "构建完成，out/ 目录内容：" && ls -la out/
+        - name: 部署到 EdgeOne
           imports:
             - https://cnb.cool/arsrna/env/-/blob/main/tencent.yml
           script:
-            - bunx edgeone makers deploy -n web-prompter -t $EO_SECRET
+            # 直接部署 out/ 目录（静态文件，避免 EdgeOne 构建器用 pnpm）
+            - bunx edgeone makers deploy -n web-prompter -t $EO_SECRET ./out
