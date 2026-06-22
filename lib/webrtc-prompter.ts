@@ -63,8 +63,8 @@ export class PrompterWebRTCConnection {
           reconnection: true,
           reconnectionAttempts: 5,
           reconnectionDelay: 1000,
-          // 显式设置 path，确保连接正确
-          path: socketPath,
+          // 不显式设置 path，让 Socket.IO 自动处理
+          // path: socketPath,
         });
 
         console.log("Socket.IO 配置:", {
