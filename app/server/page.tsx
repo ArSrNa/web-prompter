@@ -35,7 +35,8 @@ export default function Server() {
     // 创建 WebRTC 连接（服务端作为发起者）
     const connection = new PrompterWebRTCConnection({
       roomId,
-      signalingUrl: process.env.NEXT_PUBLIC_SIGNALING_URL,
+      signalingUrl: process.env.NEXT_PUBLIC_SIGNALING_URL ||
+                    (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}` : undefined),
       isInitiator: true,
       onPropUpdate: (data) => {
         // console.log('收到属性更新:', data);

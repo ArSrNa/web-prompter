@@ -64,4 +64,4 @@ main:
           imports:
             - https://cnb.cool/arsrna/env/-/blob/main/tencent.yml
           script:
-            - bunx edgeone makers deploy ./out -n web-prompter -t $EO_SECRET
+            - bunx edgeone makers deploy -n web-prompter -t $EO_SECRET

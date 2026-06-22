@@ -1,18 +1,22 @@
 # WebRTC Signaling Server Dockerfile
-# 使用 Node.js 轻量级镜像
-FROM node:20-alpine
+# 使用提供的镜像（已包含 Bun + Node.js）
+FROM docker.cnb.cool/arsrna/dev-image/nodejs
 
 # 设置工作目录
 WORKDIR /app
 
-# 使用腾讯云 npm 镜像加速
-RUN npm config set registry https://mirrors.cloud.tencent.com/npm/
+# 复制 package.json 和 bun.lockb（如果存在）
+COPY package.json ./
+COPY bun.lockb ./ 2>/dev/null || true
 
-# 安装 socket.io
-RUN npm init -y && npm install socket.io
+# 安装依赖（使用 bun）
+RUN bun install
 
-# 复制 signaling server
-COPY signaling-server.js ./
+# 复制信令服务器代码（TypeScript）
+COPY signaling-server.ts ./
+
+# 安装 socket.io 和类型定义
+RUN bun add socket.io && bun add -d @types/node
 
 # 暴露 9000 端口
 EXPOSE 9000
@@ -22,5 +26,5 @@ ENV NODE_ENV=production
 ENV PORT=9000
 ENV HOST=0.0.0.0
 
-# 启动 signaling server
-CMD ["node", "signaling-server.js"]
+# 使用 Bun 运行 TypeScript（Bun 原生支持 TS）
+CMD ["bun", "signaling-server.ts"]

@@ -34,7 +34,8 @@ function ClientComponent() {
             // 创建 WebRTC 连接（客户端作为接收者）
             const connection = new PrompterWebRTCConnection({
                 roomId: urlRoomId,
-                signalingUrl: process.env.NEXT_PUBLIC_SIGNALING_URL || "http://localhost:9000",
+                signalingUrl: process.env.NEXT_PUBLIC_SIGNALING_URL ||
+                              (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}` : 'http://localhost:9000'),
                 isInitiator: false,
                 onConnect: () => {
                     console.log('遥控器 P2P 连接成功');

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "signaling": "node signaling-server.js",
-    "dev:all": "concurrently \"npm run dev\" \"npm run signaling\""
+    "signaling:bun": "bun signaling-server.ts",
+    "dev:all": "concurrently \"npm run dev\" \"npm run signaling\"",
+    "dev:all:bun": "concurrently \"npm run dev\" \"npm run signaling:bun\""
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

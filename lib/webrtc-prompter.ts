@@ -46,16 +46,39 @@ export class PrompterWebRTCConnection {
     return new Promise((resolve, reject) => {
       try {
         console.log("正在连接到信令服务器...");
+        console.log("Signaling URL from config:", this.config.signalingUrl);
+        console.log("process.env.NEXT_PUBLIC_SIGNALING_URL:", typeof window !== 'undefined' ? (window as any).ENV_SIGNALING_URL : process.env.NEXT_PUBLIC_SIGNALING_URL);
 
         const signalingUrl = this.config.signalingUrl || "http://localhost:9000";
+        console.log("最终使用的 Signaling URL:", signalingUrl);
 
         // 连接到信令服务器
+        // 解析 URL 以获取 path
+        let socketPath = '/socket.io/';
+        try {
+          const urlObj = new URL(signalingUrl);
+          // 如果 URL 有路径，Socket.IO 会自动处理
+          console.log("Signaling URL pathname:", urlObj.pathname);
+        } catch (e) {
+          console.warn("解析 URL 失败:", e);
+        }
+
         this.socket = io(signalingUrl, {
           transports: ["websocket", "polling"],
           reconnection: true,
           reconnectionAttempts: 5,
           reconnectionDelay: 1000,
+          // 显式设置 path，确保连接正确
+          path: socketPath,
         });
+
+        console.log("Socket.IO 配置:", {
+          url: signalingUrl,
+          path: socketPath,
+          transports: ["websocket", "polling"]
+        });
+
+        console.log("Socket.IO 实例已创建，使用的 URL:", signalingUrl);
 
         // 设置信令事件处理
         this.setupSignalingEvents();
